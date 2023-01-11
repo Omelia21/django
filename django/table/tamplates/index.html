@@ -1,0 +1,137 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>django</title>
+	<link rel="stylesheet" href="{% static 'style.css'%}" type="text/css">
+</head>
+<body>
+	<form method="POST">
+		{% csrf_token %}
+		<input type="date" name="data" id="data" min="{{this_day}}">
+		<div id="table">
+			{% for item in table %}
+				<div data-id="{{item.id}}" data-datas="{{item.data}}" class="table {{item.table_form}}" onclick="toggleTable(this)" style="top: {{ item.coordinates_y }}%; left: {{ item.coordinates_x }}%; width: {{ item.width }}px; height: {{ item.height }}px;">{{item.id}}</div>
+			{% endfor %}
+		</div>
+		<div class="arrow prev" onclick="arrow(true)">
+			<svg width="8" height="12" viewBox="0 0 8 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<path d="M1.27539 11.069L6.10298 6L1.27539 0.931038" stroke="black" stroke-width="1.68966" stroke-linecap="round"/>
+			</svg>  
+		</div>
+		<div class="arrow next" onclick="arrow(false)">
+			<svg width="8" height="12" viewBox="0 0 8 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<path d="M6.72461 11.069L1.89702 6L6.72461 0.931038" stroke="black" stroke-width="1.68966" stroke-linecap="round"/>
+			</svg> 
+		</div>
+		<div id="table_btn">Продолжить</div>
+		<div id="error_text"></div>
+		<div id="window">
+			<div>
+				<div class="bacgr"></div>
+				<div class="form_box">
+					<div class="form_wind">
+						<input style="display: none;" type="text" name="tableitem">
+						<div>Номер: <div id="table_item"></div></div>
+						<input type="text" name="name" minlength="3" placeholder="Имя" required>
+						<input type="email" size="30" name="email" placeholder="Почта" required>
+						<button class="button">забронировать</button>
+					</div>	
+				</div>
+			</div>
+		</div>
+	</form>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+	<script type="text/javascript">
+		function arrow(bool){
+			data_item = new Date($('input[name="data"]').val());		
+			if(bool){
+				data_item.setDate(data_item.getDate() + 1);
+			}else{
+				data_item.setDate(data_item.getDate() - 1);
+			}
+			data_item = data_item.getFullYear() + '-' + ('0' + (data_item.getMonth() + 1)).slice(-2) + '-' + ('0' + data_item.getDate()).slice(-2);
+
+			if(new Date(data_item) >= new Date($('input[name="data"]').attr('min'))){
+				data_ajax(data_item)
+				var input = data_item;
+				if(input.length < 10){
+					if(input.length == 9){
+						input = '0' + input;
+					}else if(input.length == 8){
+						input = '00' + input;
+					}else if(input.length == 7){
+						input = '000' + input;
+					}
+				}
+				$('.table').removeClass('active');
+				$('input[name="data"]').val(input);
+			}
+		}
+
+		function toggleTable(el) {
+			if(!$(el).hasClass('active')){
+				$('.table').removeClass('active');
+				$(el).addClass('active');
+				$('input[name="tableitem"]').val($(el).attr('data-id'));
+				$('#table_item').text($(el).attr('data-id'));
+			}else{
+				$('.table').removeClass('active');
+				$('input[name="tableitem"]').val(0);
+				$('#table_item').text('');
+			}
+		}
+		$('input[name="data"]').keyup(function(){
+			data_item = new Date($(this).val())
+			if(data_item == 'Invalid Date')
+				return false;			
+
+			data_ajax(data_item.getFullYear() + '-' + ('0' + (data_item.getMonth() + 1)).slice(-2) + '-' + ('0' + data_item.getDate()).slice(-2))
+			return false;
+		});
+
+		function data_ajax(data_item){
+			$.ajax({
+				datatype: 'json',
+				type: 'GET',
+				data: {
+					data: data_item
+				},
+				url: "{% url 'table_ajax' %}",
+				success: function (response) {
+					$('.table').removeClass('error');
+					$('.table').removeClass('active');
+					if(response.item.length != 0){
+						response.item.forEach(element => $('div[data-id="'+ element + '"]').addClass('error'));
+					}	
+				}
+			});
+		}
+		$('#table_btn').click(function(e){
+			e.preventDefault();
+			$('#error_text').text('');
+			data_item = new Date($('input[name="data"]').val());
+			if(data_item == 'Invalid Date'){
+				$('#error_text').text('Введите дату')
+				return false;
+			}
+			data_item = data_item.getFullYear() + '-' + ('0' + (data_item.getMonth() + 1)).slice(-2) + '-' + ('0' + data_item.getDate()).slice(-2);
+			if(new Date(data_item) < new Date($('input[name="data"]').attr('min'))){
+				$('#error_text').text('Ошибка')
+				return false;
+			}
+			
+			if($('.table.active').length == 0){
+				$('#error_text').text('Данный стол не выбран')
+				return false;
+			}
+			$('#window').fadeIn();
+		});
+		$('.bacgr').click(function(){
+			$('#window').fadeOut();
+		});
+	</script>
+</body>
+</html>
